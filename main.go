@@ -22,9 +22,21 @@ type SmsMessage struct {
 func main() {
 	r := gin.Default()
 
+	db := Dao{make(map[string][]SmsMessage)}
+
 	r.GET("/mailhub", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
+		})
+	})
+
+	r.GET("/sms/:name", func(c *gin.Context) {
+		name := c.Param("name")
+		smss, _ := db.GetSmssTo(name)
+
+		c.JSON(http.StatusOK, gin.H{
+			"count": len(smss),
+			"smss":  smss,
 		})
 	})
 
@@ -35,6 +47,7 @@ func main() {
 			return
 		}
 		name := c.Param("name")
+		db.Save(name, sms)
 		c.String(http.StatusOK, "Hello %s. You received an SMS from %s, saying %s", name, sms.Phone, sms.Content)
 	})
 
