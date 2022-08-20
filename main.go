@@ -25,8 +25,10 @@ func main() {
 	db := Dao{make(map[string][]SmsMessage)}
 
 	r.GET("/mailhub", func(c *gin.Context) {
+		smss, _ := db.GetAllSmss()
 		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
+			"count": len(smss),
+			"smss":  smss,
 		})
 	})
 
