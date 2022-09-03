@@ -7,5 +7,5 @@ type Dao interface {
 }
 
 func CreateDao() Dao {
-	return InMemoryDao{make(map[string][]SmsMessage)}
+	return CreatePersistentDao(false)
 }
