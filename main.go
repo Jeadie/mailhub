@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
 )
 
 type SmsMessage struct {
@@ -53,5 +54,10 @@ func main() {
 		c.String(http.StatusOK, "Hello %s. You received an SMS from %s, saying %s", name, sms.Phone, sms.Content)
 	})
 
-	r.Run()
+	v, exists := os.LookupEnv("SERVER_ADDR")
+	if exists {
+		r.Run(v)
+	} else {
+		r.Run()
+	}
 }
