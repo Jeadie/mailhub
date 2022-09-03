@@ -22,8 +22,7 @@ type SmsMessage struct {
 
 func main() {
 	r := gin.Default()
-
-	db := Dao{make(map[string][]SmsMessage)}
+	db := CreateDao()
 
 	r.GET("/mailhub", func(c *gin.Context) {
 		smss, _ := db.GetAllSmss()
