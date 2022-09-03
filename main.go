@@ -25,21 +25,29 @@ func main() {
 	db := CreateDao()
 
 	r.GET("/mailhub", func(c *gin.Context) {
-		smss, _ := db.GetAllSmss()
-		c.JSON(http.StatusOK, gin.H{
-			"count": len(smss),
-			"smss":  smss,
-		})
+		smss, err := db.GetAllSmss()
+		if err != nil {
+			c.JSON(http.StatusTeapot, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, gin.H{
+				"count": len(smss),
+				"smss":  smss,
+			})
+		}
 	})
 
 	r.GET("/sms/:name", func(c *gin.Context) {
 		name := c.Param("name")
-		smss, _ := db.GetSmssTo(name)
+		smss, err := db.GetSmssTo(name)
 
-		c.JSON(http.StatusOK, gin.H{
-			"count": len(smss),
-			"smss":  smss,
-		})
+		if err != nil {
+			c.JSON(http.StatusTeapot, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, gin.H{
+				"count": len(smss),
+				"smss":  smss,
+			})
+		}
 	})
 
 	r.POST("/sms/:name", func(c *gin.Context) {
@@ -49,8 +57,12 @@ func main() {
 			return
 		}
 		name := c.Param("name")
-		db.Save(name, sms)
-		c.String(http.StatusOK, "Hello %s. You received an SMS from %s, saying %s", name, sms.Phone, sms.Content)
+		err := db.Save(name, sms)
+		if err != nil {
+			c.JSON(http.StatusTeapot, gin.H{"error": err.Error()})
+		} else {
+			c.String(http.StatusOK, "Hello %s. You received an SMS from %s, saying %s", name, sms.Phone, sms.Content)
+		}
 	})
 
 	v, exists := os.LookupEnv("SERVER_ADDR")
