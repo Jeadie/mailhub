@@ -6,6 +6,6 @@ type Dao interface {
 	GetAllSmss() ([]SmsMessage, error)
 }
 
-func CreateDao() Dao {
-	return CreatePersistentDao(false)
+func CreateDao(inMemory bool) Dao {
+	return CreatePersistentDao(inMemory)
 }

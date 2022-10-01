@@ -20,9 +20,23 @@ type SmsMessage struct {
 	SmsType  uint     `json:"SmsType,omitempty"`
 }
 
+func (s SmsMessage) isEqualTo(t SmsMessage) bool {
+	return s.Phone == t.Phone && s.Content == t.Content && s.Date == t.Date
+}
+
+func isTestEnv(args []string) bool {
+	if len(args) >= 2 {
+		isTestEnvStr := args[1]
+		if isTestEnvStr == "true" || isTestEnvStr == "True" || isTestEnvStr == "T" {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
 	r := gin.Default()
-	db := CreateDao()
+	db := CreateDao(isTestEnv(os.Args))
 
 	r.GET("/mailhub", func(c *gin.Context) {
 		smss, err := db.GetAllSmss()

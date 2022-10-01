@@ -90,13 +90,28 @@ func MergeSms(originalValue, newValue []byte) []byte {
 		return originalValue
 	}
 
-	merge := append(UnmarshalExistingSms(originalValue), newSms)
-	bytes, err := json.Marshal(merge)
+	existing := UnmarshalExistingSms(originalValue)
+	if !SmsInList(newSms, existing) {
+		existing = append(existing, newSms)
+	} else {
+		fmt.Println("Encountered duplicate", newSms)
+	}
+	bytes, err := json.Marshal(existing)
 	if err != nil {
 		fmt.Println(fmt.Errorf("[ERROR]: Could not Marshall combined []SmsMessage, %w\n", err))
 		return originalValue
 	}
 	return bytes
+}
+
+// SmsInList returns true iff s is in the list of SMSs (as defined by SmsMessage's isEqualTo).
+func SmsInList(s SmsMessage, sList []SmsMessage) bool {
+	for _, ss := range sList {
+		if s.isEqualTo(ss) {
+			return true
+		}
+	}
+	return false
 }
 
 // UnmarshalExistingSms bytes, which can be either []SmsMessage or SmsMessage.
@@ -107,7 +122,7 @@ func UnmarshalExistingSms(v []byte) []SmsMessage {
 		return currentSmss
 	}
 
-	fmt.Println("Could not unmarshal []SmsMessage. Trying SmsMessage.")
+	fmt.Println("Could not unmarshal []SmsMessage. Trying a single SmsMessage.")
 
 	var currentSms SmsMessage
 	err = json.Unmarshal(v, &currentSms)
