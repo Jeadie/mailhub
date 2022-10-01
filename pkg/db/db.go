@@ -1,4 +1,4 @@
-package main
+package db
 
 type Dao interface {
 	Save(to string, s SmsMessage) error

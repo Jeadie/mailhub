@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"encoding/json"
@@ -93,9 +93,8 @@ func MergeSms(originalValue, newValue []byte) []byte {
 	existing := UnmarshalExistingSms(originalValue)
 	if !SmsInList(newSms, existing) {
 		existing = append(existing, newSms)
-	} else {
-		fmt.Println("Encountered duplicate", newSms)
 	}
+
 	bytes, err := json.Marshal(existing)
 	if err != nil {
 		fmt.Println(fmt.Errorf("[ERROR]: Could not Marshall combined []SmsMessage, %w\n", err))
