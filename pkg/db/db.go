@@ -6,17 +6,16 @@ type Dao interface {
 	GetAllSmss() ([]SmsMessage, error)
 }
 
-// Event represents an SMS sent to the database for storage.
+// Event represents an SMS sent To the database for storage.
 type Event struct {
-	to string
-	s SmsMessage
+	To string
+	S  SmsMessage
 }
 
 type EventHandler func(e Event) error
 
 // CreateDao (optionally just in memory) If newEvents is non-nil, it will stream new, non-duplicate
-// events to the channel. Will not ever close channel (even on DB close/crash).
+// events To the channel. Will not ever close channel (even on DB close/crash).
 func CreateDao(inMemory bool, newEvents chan Event) Dao {
 	return CreatePersistentDao(inMemory, newEvents)
 }
-

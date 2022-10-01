@@ -9,7 +9,7 @@ import (
 )
 
 type PersistentDao struct {
-	db *badger.DB
+	db     *badger.DB
 	stream chan Event
 }
 
@@ -26,21 +26,21 @@ func CreatePersistentDao(inMemory bool, events chan Event) PersistentDao {
 		log.Fatal(err)
 	}
 	return PersistentDao{
-		db: db,
+		db:     db,
 		stream: events,
 	}
 }
 
 func (d PersistentDao) Save(to string, s SmsMessage) error {
 	if !d.keyExists(to) {
-		// New keys won't get sent to stream in the Merge Operator. Must be done manually
+		// New keys won't get sent To stream in the Merge Operator. Must be done manually
 		d.stream <- Event{
-			to: to,
-			s:  s,
+			To: to,
+			S:  s,
 		}
 	}
 
-	m := d.db.GetMergeOperator([]byte(to),  func(existingVal, newVal []byte) []byte {
+	m := d.db.GetMergeOperator([]byte(to), func(existingVal, newVal []byte) []byte {
 		return d.MergeSms(to, existingVal, newVal)
 	}, 200*time.Millisecond)
 
@@ -114,7 +114,7 @@ func (d PersistentDao) GetAllSmss() ([]SmsMessage, error) {
 // MergeSms for exising keys (phone number/user) with a new, single SmsMessage.
 func (d PersistentDao) MergeSms(to string, originalValue, newValue []byte) []byte {
 
-	// Decode value to SmsMessage/s
+	// Decode value To SmsMessage/S
 	var newSms SmsMessage
 	err := json.Unmarshal(newValue, &newSms)
 	if err != nil {
@@ -127,13 +127,12 @@ func (d PersistentDao) MergeSms(to string, originalValue, newValue []byte) []byt
 	if !SmsInList(newSms, existing) {
 		existing = append(existing, newSms)
 		d.stream <- Event{
-			to: to,
-			s:  newSms,
+			To: to,
+			S:  newSms,
 		}
 	}
 
-
-	// Encode result back to byte[]
+	// Encode result back To byte[]
 	bytes, err := json.Marshal(existing)
 	if err != nil {
 		fmt.Println(fmt.Errorf("[ERROR]: Could not Marshall combined []SmsMessage, %w\n", err))
@@ -142,7 +141,7 @@ func (d PersistentDao) MergeSms(to string, originalValue, newValue []byte) []byt
 	return bytes
 }
 
-// SmsInList returns true iff s is in the list of SMSs (as defined by SmsMessage's isEqualTo).
+// SmsInList returns true iff S is in the list of SMSs (as defined by SmsMessage'S isEqualTo).
 func SmsInList(s SmsMessage, sList []SmsMessage) bool {
 	for _, ss := range sList {
 		if s.isEqualTo(ss) {
@@ -165,7 +164,7 @@ func UnmarshalExistingSms(v []byte) []SmsMessage {
 	var currentSms SmsMessage
 	err = json.Unmarshal(v, &currentSms)
 	if err != nil {
-		fmt.Println(fmt.Errorf("[ERROR]: Could not unmarshall existing SMS object/s, %w\n", err))
+		fmt.Println(fmt.Errorf("[ERROR]: Could not unmarshall existing SMS object/S, %w\n", err))
 		return []SmsMessage{}
 	}
 	return []SmsMessage{currentSms}
