@@ -12,6 +12,8 @@ type Event struct {
 	s SmsMessage
 }
 
+type EventHandler func(e Event) error
+
 // CreateDao (optionally just in memory) If newEvents is non-nil, it will stream new, non-duplicate
 // events to the channel. Will not ever close channel (even on DB close/crash).
 func CreateDao(inMemory bool, newEvents chan Event) Dao {
