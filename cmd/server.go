@@ -21,8 +21,19 @@ var (
 		That is, it persists and retrieves mail on a per-person (or unique identifier) basis.
 	`,
 		Run: func(cmd *cobra.Command, args []string) {
+			isTest := environment == "test"
 			r := gin.Default()
-			server.ConstructEndpoints(r, db.CreateDao(environment == "test"))
+
+			eventChan := make(chan db.Event)
+			if isTest {
+				go func(dbEvents chan db.Event) {
+					for e := range dbEvents {
+						fmt.Println(e)
+					}
+				}(eventChan)
+			}
+
+			server.ConstructEndpoints(r, db.CreateDao(isTest, eventChan))
 			r.Run(serverAddr)
 		},
 	}

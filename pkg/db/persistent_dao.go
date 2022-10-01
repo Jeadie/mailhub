@@ -10,9 +10,10 @@ import (
 
 type PersistentDao struct {
 	db *badger.DB
+	stream chan Event
 }
 
-func CreatePersistentDao(inMemory bool) PersistentDao {
+func CreatePersistentDao(inMemory bool, events chan Event) PersistentDao {
 	var opt badger.Options
 	if inMemory {
 		opt = badger.DefaultOptions("").WithInMemory(true)
@@ -26,17 +27,46 @@ func CreatePersistentDao(inMemory bool) PersistentDao {
 	}
 	return PersistentDao{
 		db: db,
+		stream: events,
 	}
 }
 
 func (d PersistentDao) Save(to string, s SmsMessage) error {
-	m := d.db.GetMergeOperator([]byte(to), MergeSms, 200*time.Millisecond)
+	if !d.keyExists(to) {
+		// New keys won't get sent to stream in the Merge Operator. Must be done manually
+		d.stream <- Event{
+			to: to,
+			s:  s,
+		}
+	}
+
+	m := d.db.GetMergeOperator([]byte(to),  func(existingVal, newVal []byte) []byte {
+		return d.MergeSms(to, existingVal, newVal)
+	}, 200*time.Millisecond)
+
 	defer m.Stop()
 
 	b, err := json.Marshal(s)
-	err = m.Add(b)
+	if err != nil {
+		return err
+	}
+	return m.Add(b)
 
-	return err
+}
+
+func (d PersistentDao) keyExists(to string) bool {
+	exists := false
+
+	d.db.View(func(txn *badger.Txn) error {
+		_, err := txn.Get([]byte(to))
+		if err == badger.ErrKeyNotFound {
+			exists = false
+		} else {
+			exists = true
+		}
+		return err
+	})
+	return exists
 }
 
 func (d PersistentDao) GetSmssTo(to string) ([]SmsMessage, error) {
@@ -82,7 +112,9 @@ func (d PersistentDao) GetAllSmss() ([]SmsMessage, error) {
 }
 
 // MergeSms for exising keys (phone number/user) with a new, single SmsMessage.
-func MergeSms(originalValue, newValue []byte) []byte {
+func (d PersistentDao) MergeSms(to string, originalValue, newValue []byte) []byte {
+
+	// Decode value to SmsMessage/s
 	var newSms SmsMessage
 	err := json.Unmarshal(newValue, &newSms)
 	if err != nil {
@@ -90,11 +122,18 @@ func MergeSms(originalValue, newValue []byte) []byte {
 		return originalValue
 	}
 
+	// Add newValue, if not duplicate
 	existing := UnmarshalExistingSms(originalValue)
 	if !SmsInList(newSms, existing) {
 		existing = append(existing, newSms)
+		d.stream <- Event{
+			to: to,
+			s:  newSms,
+		}
 	}
 
+
+	// Encode result back to byte[]
 	bytes, err := json.Marshal(existing)
 	if err != nil {
 		fmt.Println(fmt.Errorf("[ERROR]: Could not Marshall combined []SmsMessage, %w\n", err))
