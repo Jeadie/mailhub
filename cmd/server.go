@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	air "github.com/Jeadie/mailhub/pkg/airtable"
 	"github.com/Jeadie/mailhub/pkg/db"
@@ -8,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"os"
+	"strings"
 )
 
 var (
@@ -17,9 +19,10 @@ var (
 	sendToAirtable bool
 
 	// Variable for airtable integration. (Used only if sendToAirtable)
-	airtableApiKey  string
-	airtableBaseId  string
-	airtableTableId string
+	airTableConfigFilepath string
+	airtableApiKey         string
+	airtableBaseId         string
+	airtableTableId        string
 
 	rootCmd = &cobra.Command{
 		Use:   "mailhub",
@@ -32,6 +35,10 @@ var (
 				airtableApiKey = os.Getenv("AIRTABLE_API_KEY")
 				airtableBaseId = os.Getenv("AIRTABLE_BASE_ID")
 				airtableTableId = os.Getenv("AIRTABLE_TABLE_ID")
+			} else if airTableConfigFilepath != "" {
+				var err error
+				airtableApiKey, airtableBaseId, airtableTableId, err = GetAirtableVariablesFromFile(airTableConfigFilepath)
+				sendToAirtable = err == nil
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
@@ -45,7 +52,6 @@ var (
 				a := air.CreateAirtable(airtableBaseId, airtableTableId, airtableApiKey)
 				eventHandler = append(eventHandler, func(e db.Event) error { return air.HandleDbEvent(a, e) })
 			}
-
 			if isTest {
 				eventHandler = append(eventHandler, func(e db.Event) error { fmt.Println(e); return nil })
 			}
@@ -65,6 +71,26 @@ var (
 	}
 )
 
+func GetAirtableVariablesFromFile(filepath string) (string, string, string, error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	// Get single line from file.
+	sc := bufio.NewScanner(f)
+	sc.Split(bufio.ScanLines)
+	sc.Scan()
+	t := sc.Text()
+
+	// Expected format a,b,c
+	vars := strings.Split(t, ",")
+	if len(vars) != 3 {
+		return "", "", "", fmt.Errorf("file %s had more than three entries", filepath)
+	}
+	return vars[0], vars[1], vars[2], nil
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVar(&serverAddr, "server-addr", ":8080", "TCP network address for the server to start on")
 	rootCmd.PersistentFlags().StringVar(&environment, "env", "prod", "Environment stage of the Mailhub.")
@@ -74,6 +100,7 @@ func init() {
 		false,
 		"Whether to send results to an Airtable integration. Requires ENV variables: AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_ID",
 	)
+	rootCmd.PersistentFlags().StringVar(&airTableConfigFilepath, "airtable-file", "", "Filepath to comma separated values for variables: AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_ID respectively")
 
 }
 
